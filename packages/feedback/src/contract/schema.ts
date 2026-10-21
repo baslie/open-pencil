@@ -31,6 +31,7 @@ export const AI_PROVIDERS = [
   'zai',
   'minimax',
   'anthropic-compatible',
+  'openpencil',
   'harness:pi',
   'acp:claude-code',
   'acp:codex',

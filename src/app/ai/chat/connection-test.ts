@@ -2,6 +2,7 @@ import { generateText } from 'ai'
 
 import { isInsufficientCreditError, providerErrorStatus } from '@/app/ai/chat/failure'
 import { createLanguageModel, resolveLanguageModelID, type ModelConfig } from '@/app/ai/chat/model'
+import type { ModelProviderRuntime } from '@/app/ai/providers/types'
 import { isTauri } from '@/app/tauri/env'
 
 export type ProviderConnectionTestResult =
@@ -89,15 +90,17 @@ function classifyError(error: unknown): ProviderConnectionTestFailureReason {
   return classifyStatus(providerErrorStatus(error), text) ?? classifyMessage(text) ?? 'unknown'
 }
 
+/** A `runtime` with its own fetch, such as Cloud's AI service, is used instead of the default. */
 export async function testProviderConnection(
-  config: ModelConfig
+  config: ModelConfig,
+  runtime?: ModelProviderRuntime
 ): Promise<ProviderConnectionTestResult> {
   const invalidReason = validateConfig(config)
   if (invalidReason) return { ok: false, reason: invalidReason }
 
   try {
     await generateText({
-      model: createLanguageModel(config),
+      model: createLanguageModel(config, runtime),
       prompt: 'Reply with OK.',
       maxOutputTokens: 1,
       abortSignal: AbortSignal.timeout(15_000)

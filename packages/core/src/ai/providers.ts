@@ -57,6 +57,7 @@ export type AIProviderID =
   | 'zai'
   | 'minimax'
   | 'anthropic-compatible'
+  | 'openpencil'
   | 'harness:pi'
   | `acp:${ACPAgentID}`
 
@@ -338,6 +339,14 @@ export const AI_PROVIDERS: AIProviderDef[] = [
     models: [],
     supportsCustomBaseURL: true,
     supportsCustomModel: true
+  },
+  {
+    id: 'openpencil',
+    name: 'OpenPencil Cloud',
+    keyPlaceholder: '',
+    keyURL: '',
+    defaultModel: '',
+    models: []
   }
 ]
 

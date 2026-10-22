@@ -14,7 +14,7 @@ From a checkout of the repository:
 ```sh
 bun install
 bun run build:packages
-bunx playwright install chromium                 # draws the demo document's shader fills
+bunx playwright install --with-deps chromium     # draws the demo document's shader fills
 bun run build:cloud                              # writes dist-cloud/: the editor and the server's pages
 bun --filter @open-pencil/cloud build:standalone # writes packages/cloud/dist-standalone/
 ```

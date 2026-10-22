@@ -238,6 +238,18 @@ portal_url = "https://billing.example.com"
     expect(parseCloudDeploymentTOML(minimalSource, environment).relayURL).toBeUndefined()
   })
 
+  test('refuses keys it does not know rather than leaving their settings at defaults', () => {
+    const renamed = minimalSource.replace(
+      '[authentication.enrollment]\nmode = "approval"',
+      '[authentication]\nenrollment_mode = "approval"\n\n[authentication.enrollment]'
+    )
+    expect(renamed).not.toBe(minimalSource)
+    expect(() => parseCloudDeploymentTOML(renamed, environment)).toThrow()
+    expect(() =>
+      parseCloudDeploymentTOML(`${minimalSource}\n[technical_limits]\n`, environment)
+    ).toThrow()
+  })
+
   test('supports explicit secret-reference names', () => {
     const input = parseTOML(minimalSource)
     const parsed = v.parse(cloudDeploymentConfigSchema, input)

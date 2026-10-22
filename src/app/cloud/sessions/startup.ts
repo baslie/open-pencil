@@ -9,7 +9,13 @@ import {
   resumeCloudDocumentLink
 } from '../documents/link'
 import { resumeCloudInvitation } from '../invitations/flow'
-import { bindDesktopCloudLinks, openCloudLink, readCloudLink, resumeCloudLink } from '../links'
+import {
+  bindDesktopCloudLinks,
+  forgetCloudLink,
+  openCloudLink,
+  readCloudLink,
+  resumeCloudLink
+} from '../links'
 import { addCloudSiteServer, cloudServers, findCloudServer } from '../servers/store'
 import { refreshCloudConnection } from './connection'
 import { takePendingCloudSignIn } from './sign-in'
@@ -30,7 +36,10 @@ export async function startCloudSessions(options: {
   const link = readCloudLink(address)
   const documentLink = readCloudDocumentLink(address)
   // The link the tab opens with is the one to open, not one kept from an earlier sign-in.
-  if (documentLink) forgetCloudDocumentLink()
+  if (documentLink || link) {
+    forgetCloudDocumentLink()
+    forgetCloudLink()
+  }
   resumeCloudDocumentLink()
   resumeCloudLink()
   if (link) await options.leaveLinkAddress()

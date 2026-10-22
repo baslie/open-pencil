@@ -40,7 +40,7 @@ The server migrates the database before it accepts requests and listens on `PORT
 
 ## The editor address
 
-The server serves the editor at its own address. Visitors who are not signed in get a welcome page there first, where they sign in or use the editor without an account; signed-in people get the editor, already connected to the server, and invitation and share links open it.
+The server serves the editor at its own address. Visitors who are not signed in get a welcome page there first, where they sign in or use the editor without an account. Signed-in people whose account may use the server get the editor, already connected to it; an account waiting for approval gets a page that says so. Invitation and share links open the editor too.
 
 For a server only its members use, set `deployment.local_editor = false`: the welcome page then offers only signing in, and every editor page asks for it. To keep shared links to members too, turn off `guest_view`, `guest_edit`, and `guest_presence` under `[entitlements.sharing]`; links then open after signing in to the server.
 

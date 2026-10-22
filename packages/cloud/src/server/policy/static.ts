@@ -45,16 +45,16 @@ export type StaticEntitlements = v.InferOutput<typeof staticEntitlementsSchema>
 /** Entitlements as a writer sends them, with any group left out. */
 export type StaticEntitlementsInput = v.InferInput<typeof staticEntitlementsSchema>
 
-export const staticEntitlementsTOMLSchema = v.object({
+export const staticEntitlementsTOMLSchema = v.strictObject({
   documents: v.optional(
-    v.object({
+    v.strictObject({
       maximum_file_bytes: v.optional(positiveInteger),
       revision_history: v.optional(v.boolean())
     })
   ),
-  storage: v.optional(v.object({ maximum_bytes: v.optional(positiveInteger) })),
+  storage: v.optional(v.strictObject({ maximum_bytes: v.optional(positiveInteger) })),
   sharing: v.optional(
-    v.object({
+    v.strictObject({
       links: v.optional(v.boolean()),
       guest_view: v.optional(v.boolean()),
       guest_edit: v.optional(v.boolean()),
@@ -62,13 +62,13 @@ export const staticEntitlementsTOMLSchema = v.object({
     })
   ),
   collaboration: v.optional(
-    v.object({
+    v.strictObject({
       enabled: v.optional(v.boolean()),
       maximum_participants: v.optional(positiveInteger)
     })
   ),
   ai: v.optional(
-    v.object({
+    v.strictObject({
       enabled: v.optional(v.boolean()),
       monthly_credit_allowance: v.optional(nonNegativeInteger)
     })

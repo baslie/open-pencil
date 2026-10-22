@@ -15,8 +15,17 @@ import type { CloudAccountStatus } from '@open-pencil/cloud/contract'
  */
 export const WELCOME_PATH = '/welcome'
 
-/** Links to a document, a shared file, or an invitation, which sign in on their own. */
-const CLOUD_LINK_PATH = /^\/cloud\/(?:documents|share|invitations)\//
+const CLOUD_LINK_PATH = /^\/cloud\/(documents|share|invitations)\/[^/]+$/
+
+/**
+ * Whether an address is a link to a document, a shared file, or an invitation, which sign in on
+ * their own: it names its server, and a shared file or invitation carries its secret.
+ */
+export function isCloudLink(url: URL): boolean {
+  const [, kind] = url.pathname.match(CLOUD_LINK_PATH) ?? []
+  if (!kind || !url.searchParams.get('server')) return false
+  return kind === 'documents' || url.hash.length > 1
+}
 
 /** Whether this browser chose to use the server's editor without an account. */
 const localEditor = useLocalStorage('open-pencil:cloud-site-local', false, {
@@ -48,7 +57,6 @@ export function siteDestination(visit: {
   choseLocalEditor: boolean
 }): string | null {
   const { path, account } = visit
-  if (CLOUD_LINK_PATH.test(path)) return null
   if (account === 'unreachable' || account?.state === 'active') return null
   if (visit.localEditor && (path !== '/' || visit.choseLocalEditor)) return null
   return WELCOME_PATH
@@ -67,10 +75,12 @@ async function signedInAccount(api: CloudPortalClient): Promise<SiteAccount> {
 
 /**
  * Before the editor boots on a Cloud server: leaves for the welcome page when the visit belongs
- * there (`siteDestination`). Returns whether the editor should boot.
+ * there (`siteDestination`). Returns whether the editor should boot. A server whose discovery
+ * fails is taken not to allow the local editor; one that cannot say who is signed in at all is
+ * unreachable, and the editor opens.
  */
 export async function enterCloudSite(location: Location = globalThis.location): Promise<boolean> {
-  if (CLOUD_LINK_PATH.test(location.pathname)) return true
+  if (isCloudLink(new URL(location.href))) return true
   const [discovery, account] = await Promise.all([
     discoverCloud(location.origin).catch(() => null),
     signedInAccount(createCloudPortalClient({ baseURL: location.origin }))
@@ -78,7 +88,7 @@ export async function enterCloudSite(location: Location = globalThis.location): 
   const destination = siteDestination({
     path: location.pathname,
     account,
-    localEditor: discovery?.localEditor ?? true,
+    localEditor: discovery?.localEditor ?? false,
     choseLocalEditor: localEditor.value
   })
   if (!destination) return true

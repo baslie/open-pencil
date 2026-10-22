@@ -68,6 +68,11 @@ const signingIn = IS_BROWSER
   ? useSessionStorage<string | null>('open-pencil:cloud-share-link', null)
   : ref<string | null>(null)
 
+/** Drops a shared link kept while signing in, as when the tab opens with another link. */
+export function forgetCloudLink(): void {
+  signingIn.value = null
+}
+
 /** Signs in to the server a link names, then opens the link again; see `resumeCloudLink`. */
 async function signInForLink(link: CloudLink): Promise<void> {
   const url = normalizeCloudServerURL(link.server)

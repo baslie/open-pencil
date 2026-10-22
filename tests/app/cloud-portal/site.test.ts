@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 
 import type { CloudAccountStatus } from '@open-pencil/cloud/contract'
 
-import { siteDestination, type SiteAccount } from '@/app/cloud-portal/site'
+import { isCloudLink, siteDestination, type SiteAccount } from '@/app/cloud-portal/site'
 
 function account(state: CloudAccountStatus['state']): CloudAccountStatus {
   return {
@@ -46,10 +46,14 @@ describe('Cloud server editor pages', () => {
     expect(visit('/share/room', account('pending'), { localEditor: false })).toBe('/welcome')
   })
 
-  test('leave document, shared file, and invitation links to sign in on their own', () => {
-    for (const path of ['/cloud/documents/a', '/cloud/share/b', '/cloud/invitations/c']) {
-      expect(visit(path, null, { localEditor: false })).toBeNull()
-    }
+  test('tell links, which sign in on their own, from look-alike addresses', () => {
+    const link = (address: string) => isCloudLink(new URL(address, 'https://cloud.example'))
+    expect(link('/cloud/documents/a?server=https://cloud.example')).toBe(true)
+    expect(link('/cloud/share/b?server=https://cloud.example#secret')).toBe(true)
+    expect(link('/cloud/invitations/c?server=https://cloud.example#token')).toBe(true)
+    expect(link('/cloud/share/b?server=https://cloud.example')).toBe(false)
+    expect(link('/cloud/documents/a')).toBe(false)
+    expect(link('/cloud/share/b/c?server=x#secret')).toBe(false)
   })
 
   test('open the editor when the server cannot say, since the editor works without it', () => {

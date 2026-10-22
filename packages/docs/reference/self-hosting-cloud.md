@@ -60,7 +60,7 @@ On Cloudflare a Worker serves the API, the editor, and the server's own pages, a
 2. Create a Hyperdrive configuration for the database with `wrangler hyperdrive create`, and put its ID, your domain, and a Worker name in the copy's `wrangler.jsonc`.
 3. Add your TOML as `openpencil-cloud.toml` in the copy; Wrangler bundles it as text. Leave `[database]` empty, since `DATABASE_URL` comes from Hyperdrive, and trust `cf-connecting-ip` under `[authentication.trusted_proxies]`.
 4. Migrate from a checkout, with that TOML as `OPENPENCIL_CLOUD_CONFIG` and a direct connection string as `DATABASE_URL`: `bun --filter @open-pencil/cloud migrate`. The Worker never migrates, so do this before every deploy.
-5. Build the site with `bun run build:packages && bun run build:cloud`, then deploy from the copy with `bunx wrangler deploy --assets <repository>/dist-cloud --secrets-file <file>`, where the JSON file holds the secrets the TOML names.
+5. Build the site with `bun run build:packages && bun run build:cloud`, then deploy from the copy with `bunx wrangler deploy --assets "$(git rev-parse --show-toplevel)/dist-cloud" --secrets-file secrets.json`, where `secrets.json` holds the secrets the TOML names.
 
 The operator commands below work the same way, from a checkout with a direct connection. The `[workers]` intervals don't apply: mail a request queues is sent when the request finishes, and the Cron Trigger handles the rest.
 

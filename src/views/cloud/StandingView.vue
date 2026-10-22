@@ -35,7 +35,13 @@ async function signOut() {
       <icon-lucide-ban v-else class="size-6" />
     </template>
     <template v-if="portal.account.value" #actions>
-      <AppButton size="lg" variant="outline" class="w-full" @click="openLocalEditor">
+      <AppButton
+        v-if="portal.discovery.localEditor"
+        size="lg"
+        variant="outline"
+        class="w-full"
+        @click="openLocalEditor"
+      >
         {{ messages.useWithoutAccount }}
       </AppButton>
       <AppButton size="lg" variant="ghost" class="w-full" @click="signOut">

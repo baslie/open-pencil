@@ -212,12 +212,13 @@ the site's files, then the editor's `index.html` for any other page, so the edit
 its own addresses. Node reads the build named by `OPENPENCIL_CLOUD_SITE_DIR`, and the Worker reads
 its static assets. `bun run cloud:dev` keeps a watched site build next to the server.
 
-The editor a server serves knows it from the build (`__OPENPENCIL_CLOUD_SITE__`). Before it boots
-at the root, it asks who is signed in: an account that may use the server gets the editor, and
-anyone else goes to `/welcome`, which signs them in, sends an account waiting for review to its
-standing page, or opens the editor without an account; this browser then keeps that choice. Links
-to documents and shared files always open the editor, and an unreachable server does too, since
-the editor works without it. The editor adds its server at startup and reaches it with the
+The editor a server serves knows it from the build (`__OPENPENCIL_CLOUD_SITE__`). Before it boots,
+it asks who is signed in: an account that may use the server gets the editor, and anyone else at
+the root goes to `/welcome`, which signs them in, sends an account waiting for review to its
+standing page, or opens the editor without an account; this browser then keeps that choice.
+`[deployment] local_editor = false` takes that choice away and sends every editor page there.
+Links to documents, shared files, and invitations always open the editor, which signs in for them,
+and an unreachable server does too, since the editor works without it. The editor adds its server at startup and reaches it with the
 server's own sign-in session, and the portal leaves for the editor as a page load, never through
 its router. An official deployment builds the editor with its own address as
 `VITE_OPENPENCIL_OFFICIAL_CLOUD_URL`, so staging is the official server in its own editor.
@@ -253,7 +254,7 @@ opening a document nobody edited uploads nothing.
 
 Operators author one schema-versioned TOML file. It owns URLs, trusted origins and proxies,
 authentication providers, enrollment, object storage, email, worker schedules, retention,
-entitlements, and technical limits. Environment variables only supply secrets, through references
+entitlements, and technical limits, each in the section it limits. Environment variables only supply secrets, through references
 such as `{ from_env = "DATABASE_URL" }`, and never override a value the file sets. TOML is parsed
 with `smol-toml` and then validated and normalised by Valibot.
 
@@ -262,8 +263,11 @@ looser.
 
 ## Policy, entitlements, and quotas
 
-OpenFeature answers concrete questions such as whether capability links, anonymous viewing, or
-full revision history is kept, and what a numeric limit is. Its provider reads one entitlement
+OpenFeature answers concrete questions such as whether links work, whether guests, people who
+follow a link without signing in, may view or edit through one, or whether full revision history
+is kept, and what a numeric limit is. Links always work for people signed in to the server: the
+share routes resolve the session, and a guest the server turns away gets `401` so the editor signs
+in and opens the link again. Its provider reads one entitlement
 source, chosen by `[entitlements] source`: the static table in the deployment TOML, which applies to
 every workspace, or per-workspace rows in the database that the `entitlements` command sets. The two
 are alternatives, not layers. Technical limits cap the file size and participant limits the source

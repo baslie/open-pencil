@@ -41,18 +41,8 @@ trusted_origins = []
 
 [database]
 
-[authentication]
-enrollment_mode = "open"
-admin_notification_emails = []
-
-[authentication.mfa]
-deployment_admin_required = false
-totp_enabled = false
-passkeys_enabled = false
-recovery_codes_enabled = false
-
-[authentication.email_password]
-enabled = false
+[authentication.enrollment]
+mode = "open"
 
 [authentication.trusted_proxies]
 headers = []

@@ -116,6 +116,18 @@ export async function addCloudSiteServer(
     : addCloudServer({ kind: 'self-hosted', url: origin })
 }
 
+/**
+ * The server a link names: one this app knows, or the official one, which a link may add. Null
+ * for any other, so a link alone never connects the app anywhere new.
+ */
+export async function cloudServerForLink(url: string): Promise<CloudServer | null> {
+  const known = state.value.servers.find((server) => server.url === url)
+  if (known) return known
+  return url === normalizeCloudServerURL(OFFICIAL_CLOUD_URL)
+    ? addCloudServer({ kind: 'official' })
+    : null
+}
+
 /** Forgets a server; Home moves to the next one. */
 export function removeCloudServer(id: string): void {
   const current = state.value

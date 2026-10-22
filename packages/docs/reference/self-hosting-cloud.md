@@ -42,6 +42,8 @@ The server migrates the database before it accepts requests and listens on `PORT
 
 The server serves the editor at its own address. Visitors who are not signed in get a welcome page there first, where they sign in or use the editor without an account; signed-in people get the editor, already connected to the server, and invitation and share links open it.
 
+For a server only its members use, set `deployment.local_editor = false`: the welcome page then offers only signing in, and every editor page asks for it. To keep shared links to members too, turn off `guest_view`, `guest_edit`, and `guest_presence` under `[entitlements.sharing]`; links then open after signing in to the server.
+
 To send links to an editor at another address instead, set `deployment.app_url` to it and list its origin in `deployment.trusted_origins`. People sign in there by approving a code, as in the desktop app, which connects to the server directly either way.
 
 ## Reverse proxy
@@ -64,7 +66,7 @@ The operator commands below work the same way, from a checkout with a direct con
 
 ## The first administrator
 
-Set `authentication.enrollment_mode = "approval"` for a controlled deployment: a verified identity then creates a pending request that an administrator reviews. Startup never grants roles, so bootstrap the first operator from a repository checkout that reads the same configuration and secrets and can reach the server's database at `DATABASE_URL`:
+Set `[authentication.enrollment] mode = "approval"` for a controlled deployment: a verified identity then creates a pending request that an administrator reviews. Startup never grants roles, so bootstrap the first operator from a repository checkout that reads the same configuration and secrets and can reach the server's database at `DATABASE_URL`:
 
 ```sh
 bun --filter @open-pencil/cloud admin approve owner@example.com

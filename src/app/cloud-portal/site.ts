@@ -3,15 +3,20 @@ import { useLocalStorage } from '@vueuse/core'
 import {
   CloudPortalAPIError,
   createCloudPortalClient,
+  discoverCloud,
   type CloudPortalClient
 } from '@open-pencil/cloud/client'
 import type { CloudAccountStatus } from '@open-pencil/cloud/contract'
 
 /**
- * A Cloud server serves the editor at its root to signed-in people and to visitors who chose to
- * use it without an account; everyone else gets the welcome page first.
+ * A Cloud server serves the editor to signed-in people and, where the server allows the local
+ * editor, to visitors who chose to use it without an account; everyone else gets the welcome
+ * page first.
  */
 export const WELCOME_PATH = '/welcome'
+
+/** Links to a document, a shared file, or an invitation, which sign in on their own. */
+const CLOUD_LINK_PATH = /^\/cloud\/(?:documents|share|invitations)\//
 
 /** Whether this browser chose to use the server's editor without an account. */
 const localEditor = useLocalStorage('open-pencil:cloud-site-local', false, {
@@ -20,29 +25,36 @@ const localEditor = useLocalStorage('open-pencil:cloud-site-local', false, {
   writeDefaults: false
 })
 
-export function choseLocalEditor(): boolean {
-  return localEditor.value
-}
-
 /** Opens the server's editor without an account, now and on later visits from this browser. */
 export function openLocalEditor(): void {
   localEditor.value = true
   globalThis.location.assign('/')
 }
 
+/** Who is signed in to the server, or `unreachable` when it cannot say. */
+export type SiteAccount = CloudAccountStatus | null | 'unreachable'
+
 /**
- * Where a visitor to the server's root belongs, from who is signed in: the editor, or the welcome
- * page, which sends an account waiting for review on to its standing page. An unreachable server
- * opens the editor, which works without it.
+ * Where a visit to an editor page belongs: null for the editor, or the welcome page, which sends
+ * an account waiting for review on to its standing page. An account that may use the server
+ * gets the editor, and so does an unreachable server, since the editor works without it.
+ * Without an account, the root asks first unless this browser chose the local editor, and every
+ * page does where the server does not allow it.
  */
-export function rootDestination(account: CloudAccountStatus | null | 'unreachable'): string | null {
+export function siteDestination(visit: {
+  path: string
+  account: SiteAccount
+  localEditor: boolean
+  choseLocalEditor: boolean
+}): string | null {
+  const { path, account } = visit
+  if (CLOUD_LINK_PATH.test(path)) return null
   if (account === 'unreachable' || account?.state === 'active') return null
+  if (visit.localEditor && (path !== '/' || visit.choseLocalEditor)) return null
   return WELCOME_PATH
 }
 
-async function signedInAccount(
-  api: CloudPortalClient
-): Promise<CloudAccountStatus | null | 'unreachable'> {
+async function signedInAccount(api: CloudPortalClient): Promise<SiteAccount> {
   try {
     return await api.accountStatus()
   } catch (error) {
@@ -54,14 +66,21 @@ async function signedInAccount(
 }
 
 /**
- * Before the editor boots on a Cloud server: leaves the root for the welcome page when nobody who
- * may use the server is signed in and this browser never chose to go without an account. Returns
- * whether the editor should boot. Links to documents and shared files always open the editor.
+ * Before the editor boots on a Cloud server: leaves for the welcome page when the visit belongs
+ * there (`siteDestination`). Returns whether the editor should boot.
  */
 export async function enterCloudSite(location: Location = globalThis.location): Promise<boolean> {
-  if (location.pathname !== '/' || choseLocalEditor()) return true
-  const api = createCloudPortalClient({ baseURL: location.origin })
-  const destination = rootDestination(await signedInAccount(api))
+  if (CLOUD_LINK_PATH.test(location.pathname)) return true
+  const [discovery, account] = await Promise.all([
+    discoverCloud(location.origin).catch(() => null),
+    signedInAccount(createCloudPortalClient({ baseURL: location.origin }))
+  ])
+  const destination = siteDestination({
+    path: location.pathname,
+    account,
+    localEditor: discovery?.localEditor ?? true,
+    choseLocalEditor: localEditor.value
+  })
   if (!destination) return true
   location.replace(destination)
   return false

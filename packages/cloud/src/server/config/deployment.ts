@@ -84,6 +84,8 @@ export const cloudDeploymentConfigSchema = v.object({
     app_url: v.optional(url),
     indexing: v.optional(v.picklist(['allow', 'deny']), 'deny'),
     trusted_origins: v.optional(v.array(url), []),
+    // The server's editor works with files on this device without signing in to the server.
+    local_editor: v.optional(v.boolean(), true),
     listing: v.optional(v.object({ minimum_editor_version: cloudEditorVersionSchema }))
   }),
   database: v.optional(v.object({ url: defaultReference(DEFAULT_SECRET_NAMES.databaseURL) }), {
@@ -91,9 +93,13 @@ export const cloudDeploymentConfigSchema = v.object({
   }),
   authentication: v.object({
     secret: defaultReference(DEFAULT_SECRET_NAMES.authSecret),
-    enrollment_mode: v.optional(v.picklist(['open', 'approval', 'closed']), 'open'),
-    admin_notification_emails: v.optional(v.array(v.pipe(v.string(), v.email())), []),
-    admin_user_ids: v.optional(v.array(text), []),
+    enrollment: v.optional(
+      v.object({
+        mode: v.optional(v.picklist(['open', 'approval', 'closed']), 'open'),
+        notification_emails: v.optional(v.array(v.pipe(v.string(), v.email())), [])
+      }),
+      { mode: 'open', notification_emails: [] }
+    ),
     email_password: v.optional(
       v.object({
         enabled: v.optional(v.boolean(), false),
@@ -106,8 +112,8 @@ export const cloudDeploymentConfigSchema = v.object({
           v.pipe(v.number(), v.integer(), v.minValue(15), v.maxValue(128)),
           128
         ),
-        verification_link_expires_minutes: v.optional(positiveInteger, 60),
-        password_reset_link_expires_minutes: v.optional(positiveInteger, 60),
+        verification_link_lifetime_minutes: v.optional(positiveInteger, 60),
+        password_reset_link_lifetime_minutes: v.optional(positiveInteger, 60),
         compromised_password_check: v.optional(v.boolean(), false)
       }),
       {
@@ -115,33 +121,32 @@ export const cloudDeploymentConfigSchema = v.object({
         sign_up: true,
         minimum_password_length: 8,
         maximum_password_length: 128,
-        verification_link_expires_minutes: 60,
-        password_reset_link_expires_minutes: 60,
+        verification_link_lifetime_minutes: 60,
+        password_reset_link_lifetime_minutes: 60,
         compromised_password_check: false
       }
     ),
     mfa: v.optional(
       v.object({
-        deployment_admin_required: v.optional(v.boolean(), false),
-        totp_enabled: v.optional(v.boolean(), false),
-        passkeys_enabled: v.optional(v.boolean(), false),
-        recovery_codes_enabled: v.optional(v.boolean(), false),
-        trusted_device_days: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)), 14)
+        required_for_admins: v.optional(v.boolean(), false),
+        totp: v.optional(v.boolean(), false),
+        recovery_codes: v.optional(v.boolean(), false),
+        trusted_device_lifetime_days: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)), 14)
       }),
       {
-        deployment_admin_required: false,
-        totp_enabled: false,
-        passkeys_enabled: false,
-        recovery_codes_enabled: false,
-        trusted_device_days: 14
+        required_for_admins: false,
+        totp: false,
+        recovery_codes: false,
+        trusted_device_lifetime_days: 14
       }
     ),
+    // Passkeys belong to public_url's host and origin.
     passkeys: v.optional(
       v.object({
-        rp_id: text,
-        rp_name: v.optional(text, 'OpenPencil Cloud'),
-        origin: url
-      })
+        enabled: v.optional(v.boolean(), false),
+        rp_name: v.optional(text, 'OpenPencil Cloud')
+      }),
+      { enabled: false, rp_name: 'OpenPencil Cloud' }
     ),
     captcha: v.optional(
       v.object({
@@ -180,9 +185,21 @@ export const cloudDeploymentConfigSchema = v.object({
     force_path_style: v.optional(v.boolean(), true),
     checksum_verification: v.optional(v.picklist(['native', 'metadata']), 'native'),
     server_side_encryption: v.optional(v.picklist(['AES256', 'aws:kms'])),
-    kms_key_id: v.optional(text)
+    kms_key_id: v.optional(text),
+    maximum_upload_bytes: v.optional(positiveInteger)
   }),
-  collaboration: v.optional(v.object({ relay_url: v.pipe(v.string(), v.url()) })),
+  collaboration: v.optional(
+    v.object({
+      relay_url: v.optional(url),
+      maximum_message_bytes: v.optional(positiveInteger),
+      maximum_connections_per_room: v.optional(positiveInteger)
+    }),
+    {}
+  ),
+  documents: v.optional(
+    v.object({ retention_days: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)), 30) }),
+    { retention_days: 30 }
+  ),
   email: emailSchema,
   workers: v.optional(
     v.object({
@@ -200,16 +217,9 @@ export const cloudDeploymentConfigSchema = v.object({
           enabled: v.optional(v.boolean(), true),
           batch_size: v.optional(positiveInteger, 100),
           interval_ms: v.optional(positiveInteger, 60_000),
-          lease_ms: v.optional(positiveInteger, 300_000),
-          document_retention_days: v.optional(v.pipe(v.number(), v.minValue(0)), 30)
+          lease_ms: v.optional(positiveInteger, 300_000)
         }),
-        {
-          enabled: true,
-          batch_size: 100,
-          interval_ms: 60_000,
-          lease_ms: 300_000,
-          document_retention_days: 30
-        }
+        { enabled: true, batch_size: 100, interval_ms: 60_000, lease_ms: 300_000 }
       )
     })
   ),
@@ -232,13 +242,6 @@ export const cloudDeploymentConfigSchema = v.object({
   billing: v.optional(v.object({ portal_url: url })),
   internal_api: v.optional(
     v.object({ service_token: defaultReference(DEFAULT_SECRET_NAMES.internalServiceToken) })
-  ),
-  technical_limits: v.optional(
-    v.object({
-      maximum_upload_bytes: v.optional(positiveInteger),
-      maximum_collaboration_message_bytes: v.optional(positiveInteger),
-      maximum_connections_per_room: v.optional(positiveInteger)
-    })
   )
 })
 
@@ -318,7 +321,7 @@ function workerConfig(config: CloudDeploymentConfig) {
     cleanupBatchSize: cleanup?.batch_size,
     cleanupIntervalMs: cleanup?.interval_ms,
     cleanupLeaseDurationMs: cleanup?.lease_ms,
-    documentRetentionMs: cleanup ? cleanup.document_retention_days * 86_400_000 : undefined
+    documentRetentionMs: config.documents.retention_days * 86_400_000
   }
 }
 
@@ -334,13 +337,12 @@ function serviceConfig(config: CloudDeploymentConfig, environment: CloudEnvironm
   }
 }
 
+/** Hard limits, whatever a plan allows; each lives in the section it limits. */
 function technicalLimits(config: CloudDeploymentConfig) {
-  const limits = config.technical_limits
-  if (!limits) return undefined
   return {
-    maximumUploadBytes: limits.maximum_upload_bytes,
-    maximumCollaborationMessageBytes: limits.maximum_collaboration_message_bytes,
-    maximumConnectionsPerRoom: limits.maximum_connections_per_room
+    maximumUploadBytes: config.object_storage.maximum_upload_bytes,
+    maximumCollaborationMessageBytes: config.collaboration.maximum_message_bytes,
+    maximumConnectionsPerRoom: config.collaboration.maximum_connections_per_room
   }
 }
 
@@ -355,29 +357,27 @@ export function parseCloudDeploymentConfig(
     appURL: config.deployment.app_url,
     indexingPolicy: config.deployment.indexing,
     trustedOrigins: config.deployment.trusted_origins,
+    localEditor: config.deployment.local_editor,
     listingMinimumEditorVersion: config.deployment.listing?.minimum_editor_version,
     databaseURL: requiredSecret(environment, config.database.url),
     authSecret: requiredSecret(environment, config.authentication.secret),
-    enrollmentMode: config.authentication.enrollment_mode,
-    enrollmentAdminNotificationEmails: config.authentication.admin_notification_emails,
-    deploymentAdminUserIds: config.authentication.admin_user_ids,
+    enrollmentMode: config.authentication.enrollment.mode,
+    enrollmentAdminNotificationEmails: config.authentication.enrollment.notification_emails,
     emailPasswordEnabled: config.authentication.email_password.enabled,
     emailPasswordSignUpEnabled: config.authentication.email_password.sign_up,
     emailPasswordMinimumLength: config.authentication.email_password.minimum_password_length,
     emailPasswordMaximumLength: config.authentication.email_password.maximum_password_length,
     emailVerificationExpiresIn:
-      config.authentication.email_password.verification_link_expires_minutes * 60,
+      config.authentication.email_password.verification_link_lifetime_minutes * 60,
     passwordResetExpiresIn:
-      config.authentication.email_password.password_reset_link_expires_minutes * 60,
+      config.authentication.email_password.password_reset_link_lifetime_minutes * 60,
     compromisedPasswordCheck: config.authentication.email_password.compromised_password_check,
-    deploymentAdminMFARequired: config.authentication.mfa.deployment_admin_required,
-    totpEnabled: config.authentication.mfa.totp_enabled,
-    passkeysEnabled: config.authentication.mfa.passkeys_enabled,
-    recoveryCodesEnabled: config.authentication.mfa.recovery_codes_enabled,
-    mfaTrustedDeviceDays: config.authentication.mfa.trusted_device_days,
-    passkeyRPID: config.authentication.passkeys?.rp_id,
-    passkeyRPName: config.authentication.passkeys?.rp_name,
-    passkeyOrigin: config.authentication.passkeys?.origin,
+    deploymentAdminMFARequired: config.authentication.mfa.required_for_admins,
+    totpEnabled: config.authentication.mfa.totp,
+    recoveryCodesEnabled: config.authentication.mfa.recovery_codes,
+    mfaTrustedDeviceDays: config.authentication.mfa.trusted_device_lifetime_days,
+    passkeysEnabled: config.authentication.passkeys.enabled,
+    passkeyRPName: config.authentication.passkeys.rp_name,
     captchaProvider: config.authentication.captcha?.provider,
     captchaSiteKey: config.authentication.captcha?.site_key,
     captchaSecretKey: config.authentication.captcha
@@ -400,7 +400,7 @@ export function parseCloudDeploymentConfig(
     s3ChecksumVerification: config.object_storage.checksum_verification,
     s3ServerSideEncryption: config.object_storage.server_side_encryption,
     s3KmsKeyId: config.object_storage.kms_key_id,
-    relayURL: config.collaboration?.relay_url,
+    relayURL: config.collaboration.relay_url,
     staticEntitlements: staticEntitlements(config),
     ...emailConfig(config, environment),
     ...workerConfig(config),

@@ -9,7 +9,10 @@ import PortalPublicLayout from '@/components/cloud-portal/layout/PortalPublicLay
 import AppButton from '@/components/ui/button/AppButton.vue'
 import { portalPublic } from '@/theme/cloud-portal/public'
 
-/** The server's root for visitors who are not signed in: sign in, or use the editor without. */
+/**
+ * The server's root for visitors who are not signed in: sign in, or use the editor without an
+ * account where the server allows it.
+ */
 const portal = usePortal()
 const router = useRouter()
 const messages = useCloudPortalMessages()
@@ -32,10 +35,18 @@ const ui = portalPublic()
       >
         {{ messages.signIn }}
       </AppButton>
-      <AppButton size="lg" variant="outline" class="w-full" @click="openLocalEditor">
+      <AppButton
+        v-if="portal.discovery.localEditor"
+        size="lg"
+        variant="outline"
+        class="w-full"
+        @click="openLocalEditor"
+      >
         {{ messages.useWithoutAccount }}
       </AppButton>
     </div>
-    <template #aside>{{ messages.withoutAccountNote }}</template>
+    <template v-if="portal.discovery.localEditor" #aside>
+      {{ messages.withoutAccountNote }}
+    </template>
   </PortalPublicLayout>
 </template>

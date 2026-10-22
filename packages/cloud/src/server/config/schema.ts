@@ -62,6 +62,8 @@ const rawCloudServerConfigSchema = v.object({
   databaseURL: v.pipe(v.string(), v.url()),
   authSecret: v.pipe(v.string(), v.minLength(32)),
   trustedOrigins: v.optional(v.array(httpURLSchema), []),
+  /** The server's editor works with files on this device without signing in to the server. */
+  localEditor: v.optional(v.boolean(), true),
   authTrustedIPHeaders: v.optional(v.array(v.pipe(v.string(), v.trim(), v.minLength(1))), []),
   authTrustedProxies: v.optional(v.array(v.pipe(v.string(), v.trim(), v.minLength(1))), []),
   enrollmentMode: v.optional(v.picklist(['open', 'approval', 'closed']), 'open'),
@@ -70,7 +72,6 @@ const rawCloudServerConfigSchema = v.object({
     v.array(v.pipe(v.string(), v.trim(), v.email())),
     []
   ),
-  deploymentAdminUserIds: v.optional(v.array(v.pipe(v.string(), v.trim(), v.minLength(1))), []),
   emailPasswordEnabled: v.optional(v.boolean(), false),
   emailPasswordSignUpEnabled: v.optional(v.boolean(), true),
   emailPasswordMinimumLength: v.optional(
@@ -89,9 +90,7 @@ const rawCloudServerConfigSchema = v.object({
   passkeysEnabled: v.optional(v.boolean(), false),
   recoveryCodesEnabled: v.optional(v.boolean(), false),
   mfaTrustedDeviceDays: v.optional(v.pipe(v.number(), v.integer(), v.minValue(0)), 14),
-  passkeyRPID: optionalTextSchema,
   passkeyRPName: v.optional(v.pipe(v.string(), v.trim(), v.minLength(1)), 'OpenPencil Cloud'),
-  passkeyOrigin: v.optional(httpURLSchema),
   captchaProvider: v.optional(v.literal('cloudflare-turnstile')),
   captchaSiteKey: optionalTextSchema,
   captchaSecretKey: optionalTextSchema,
@@ -185,15 +184,6 @@ function validateAuthenticationConfig(config: CloudServerConfig): void {
   }
   if (config.recoveryCodesEnabled && !config.totpEnabled) {
     throw new CloudConfigError('MFA recovery codes require TOTP')
-  }
-  if (config.passkeysEnabled) {
-    const publicURL = new URL(config.publicURL)
-    if (config.passkeyOrigin && new URL(config.passkeyOrigin).origin !== publicURL.origin) {
-      throw new CloudConfigError('Passkey origin must match the Cloud public URL origin')
-    }
-    if (config.passkeyRPID && config.passkeyRPID !== publicURL.hostname) {
-      throw new CloudConfigError('Passkey RP ID must match the Cloud public URL hostname')
-    }
   }
   requireTogether(config, 'CAPTCHA', ['captchaProvider', 'captchaSiteKey', 'captchaSecretKey'])
   if (

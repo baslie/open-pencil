@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 
 import { useCloudMessages, useCommonMessages } from '@open-pencil/vue'
 
+import type { CloudLinkPolicy } from '@/app/cloud/sharing/document'
 import AccountAvatar from '@/components/presence/AccountAvatar.vue'
 import AppButton from '@/components/ui/button/AppButton.vue'
 import AppDialogBody from '@/components/ui/dialog/AppDialogBody.vue'
@@ -15,7 +16,7 @@ import Tip from '@/components/ui/overlay/Tip.vue'
 import AppSelect from '@/components/ui/select/AppSelect.vue'
 import { cloudShare } from '@/theme/cloud/share'
 
-import type { SharePermission, ShareMember, ShareLinkPolicy, ShareLinkState } from './types'
+import type { SharePermission, ShareMember, ShareLinkState } from './types'
 
 /**
  * Who can open a Cloud document and how: people invited by email, the workspace it lives in, and
@@ -44,7 +45,7 @@ const {
   /** Whether the link goes out through the system share sheet rather than the clipboard. */
   sendsLink?: boolean
   /** What the workspace's plan allows for links, and whether guests may follow them. */
-  links?: ShareLinkPolicy
+  links?: CloudLinkPolicy
 }>()
 
 const open = defineModel<boolean>('open', { default: false })

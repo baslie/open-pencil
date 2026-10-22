@@ -3,7 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { isCloudPortalPage } from '@open-pencil/cloud/contract'
 
 import type { PortalContext } from '@/app/cloud-portal/context'
-import { portalDestination } from '@/app/cloud-portal/navigation'
+import { PORTAL_HOME, portalDestination } from '@/app/cloud-portal/navigation'
 
 /**
  * The Cloud portal's pages, guarded by the portal's access rules (`portalDestination`). The
@@ -91,7 +91,9 @@ export function createCloudPortalRouter(context: PortalContext) {
         name: 'admin',
         component: () => import('@/views/cloud/ConsoleView.vue'),
         meta: { account: true, admin: true }
-      }
+      },
+      // A stale or mistyped portal address, which the server still answers with this page.
+      { path: '/:pathMatch(.*)*', redirect: PORTAL_HOME }
     ]
   })
 

@@ -82,10 +82,14 @@ jobs:
         env:
           CLOUD_URL: ${{ vars.CLOUD_URL }}
         # Only a 200 counts: a redirect to a sign-in or access page would mean the Worker isn't there.
+        # Pages are asked for as a browser does; the API is not, so a missing route can't turn into
+        # the editor's page.
         run: |
           for path in /health /ready /.well-known/openpencil / /welcome /auth/sign-in; do
+            accept='application/json'
+            case "$path" in /|/welcome|/auth/*) accept='text/html' ;; esac
             status=$(curl --silent --show-error --retry 10 --retry-all-errors --retry-delay 3 \
-              --header 'Accept: text/html' \
+              --header "Accept: $accept" \
               --output /dev/null --write-out '%{http_code}' "$CLOUD_URL$path")
             if [ "$status" != 200 ]; then
               echo "::error::$path answered HTTP $status"

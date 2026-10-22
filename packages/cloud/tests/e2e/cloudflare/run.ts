@@ -1,6 +1,6 @@
 import { copyFile, mkdir, writeFile } from 'node:fs/promises'
 
-import { cloudDeployPath, cloudPackagePath } from '#cloud-tests/helpers/paths'
+import { cloudDeployPath, cloudPackagePath, repositoryPath } from '#cloud-tests/helpers/paths'
 import { composeCommand, runProcess } from '#cloud-tests/helpers/process'
 
 // Runs the Cloudflare Worker under `wrangler dev`, against PostgreSQL and SeaweedFS from Compose,
@@ -95,6 +95,8 @@ try {
       'bunx',
       'wrangler',
       'dev',
+      '--assets',
+      repositoryPath('dist-cloud'),
       '--ip',
       '127.0.0.1',
       '--port',

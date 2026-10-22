@@ -76,7 +76,9 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: ${{ env.DEPLOYMENT }}
           packageManager: bun
-          command: deploy --secrets-file ${{ runner.temp }}/cloud-secrets.json
+          command: >-
+            deploy --assets ${{ github.workspace }}/dist-cloud
+            --secrets-file ${{ runner.temp }}/cloud-secrets.json
 
       - name: Check the deployment
         env:

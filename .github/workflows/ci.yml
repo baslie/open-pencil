@@ -352,7 +352,7 @@ jobs:
         run: |
           bun run build:cloud
           for deployment in packages/cloud/deploy/openpencil/*/; do
-            (cd "$deployment" && bunx wrangler deploy --dry-run)
+            (cd "$deployment" && bunx wrangler deploy --dry-run --assets "$GITHUB_WORKSPACE/dist-cloud")
           done
 
       - name: Run Cloud end-to-end tests against ${{ matrix.store }}

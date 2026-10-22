@@ -6,9 +6,7 @@ schema_version = 2
 [deployment]
 mode = "official"
 public_url = "https://cloud-staging.openpencil.dev"
-app_url = "https://app.openpencil.dev"
 indexing = "deny"
-trusted_origins = ["https://app.openpencil.dev", "https://cloud-staging.openpencil.dev"]
 
 [database]
 

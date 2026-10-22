@@ -1,14 +1,24 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import type { PortalContext } from '@/app/cloud-portal/context'
-import { PORTAL_HOME, portalDestination } from '@/app/cloud-portal/navigation'
+import { isCloudPortalPage } from '@open-pencil/cloud/contract'
 
-/** The Cloud portal's pages, guarded by the portal's access rules (`portalDestination`). */
+import type { PortalContext } from '@/app/cloud-portal/context'
+import { portalDestination } from '@/app/cloud-portal/navigation'
+
+/**
+ * The Cloud portal's pages, guarded by the portal's access rules (`portalDestination`). The
+ * editor, and anything else the server serves, loads as its own page.
+ */
 export function createCloudPortalRouter(context: PortalContext) {
   const router = createRouter({
     history: createWebHistory(),
     routes: [
-      { path: '/', redirect: PORTAL_HOME },
+      {
+        path: '/welcome',
+        name: 'welcome',
+        component: () => import('@/views/cloud/WelcomeView.vue'),
+        meta: { signedOut: true }
+      },
       {
         path: '/auth/sign-in',
         name: 'sign-in',
@@ -81,12 +91,15 @@ export function createCloudPortalRouter(context: PortalContext) {
         name: 'admin',
         component: () => import('@/views/cloud/ConsoleView.vue'),
         meta: { account: true, admin: true }
-      },
-      { path: '/:pathMatch(.*)*', redirect: PORTAL_HOME }
+      }
     ]
   })
 
-  router.beforeEach((to) => portalDestination(to, context.account.value))
+  router.beforeEach((to) => {
+    if (isCloudPortalPage(to.path)) return portalDestination(to, context.account.value)
+    globalThis.location.assign(to.fullPath)
+    return false
+  })
 
   return router
 }

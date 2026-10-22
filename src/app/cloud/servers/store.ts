@@ -103,6 +103,19 @@ export async function addCloudServer(input: {
   return server
 }
 
+/**
+ * On the editor a Cloud server serves on its own address, that server, which the server's own
+ * sign-in session reaches without a token. The first server goes on Home.
+ */
+export async function addCloudSiteServer(
+  origin = globalThis.location.origin
+): Promise<CloudServer> {
+  const official = normalizeCloudServerURL(OFFICIAL_CLOUD_URL)
+  return normalizeCloudServerURL(origin) === official
+    ? addCloudServer({ kind: 'official' })
+    : addCloudServer({ kind: 'self-hosted', url: origin })
+}
+
 /** Forgets a server; Home moves to the next one. */
 export function removeCloudServer(id: string): void {
   const current = state.value

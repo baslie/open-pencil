@@ -3,9 +3,11 @@ schema_version = 2
 [deployment]
 mode = "self-hosted"
 public_url = "http://localhost:8787"
-app_url = "http://localhost:5173"
 indexing = "deny"
-trusted_origins = ["http://localhost:5173"]
+# The server serves the editor itself. Name another editor only when people use one elsewhere,
+# and trust every editor origin besides public_url.
+# app_url = "https://editor.example.com"
+# trusted_origins = ["https://editor.example.com"]
 # Editors read this only from the official OpenPencil Cloud: it shows Cloud in editors from this
 # version on. Self-hosted servers leave it out.
 # listing = { minimum_editor_version = "0.14.0" }

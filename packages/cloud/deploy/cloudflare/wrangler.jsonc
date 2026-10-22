@@ -11,10 +11,11 @@
   // The deployment TOML is bundled as text and parsed when the Worker starts.
   "rules": [{ "type": "Text", "globs": ["**/*.toml"], "fallthrough": false }],
   "observability": { "enabled": true },
-  // The Cloud portal from `bun run build:cloud-portal` at the repository root. The Worker always
-  // answers first: API routes win, portal pages get `cloud.html`, and only then files.
+  // The editor and the portal from `bun run build:cloud` at the repository root. The Worker always
+  // answers first: API routes win, portal pages get `cloud.html`, then files, and any other page
+  // the editor's `index.html`.
   "assets": {
-    "directory": "../../../../dist-cloud-portal",
+    "directory": "../../../../dist-cloud",
     "binding": "ASSETS",
     "html_handling": "none",
     "run_worker_first": true

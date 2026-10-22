@@ -10,7 +10,7 @@
   "rules": [{ "type": "Text", "globs": ["**/*.toml"], "fallthrough": false }],
   "observability": { "enabled": true },
   "assets": {
-    "directory": "../../../../../dist-cloud-portal",
+    "directory": "../../../../../dist-cloud",
     "binding": "ASSETS",
     "html_handling": "none",
     "run_worker_first": true

@@ -1,0 +1,1 @@
+- `.pen` files of schema 2.x keep their strokes on import, including stroke lists, per-side widths, alignment, and instances that override only the stroke color.

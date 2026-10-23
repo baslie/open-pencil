@@ -19,6 +19,7 @@ import {
   convertEffects,
   convertFill,
   convertStroke,
+  mergeStrokeFields,
   isVarRef,
   mapAlignItems,
   mapFontWeight,
@@ -180,8 +181,8 @@ function applyRefVisuals(
   if (!compPen) return
   if (pen.fill === undefined && compPen.fill !== undefined)
     node.fills = convertFill(compPen.fill, ctx, node)
-  if (pen.stroke === undefined && compPen.stroke)
-    node.strokes = convertStroke(compPen.stroke, ctx, node)
+  if (compPen.stroke !== undefined)
+    node.strokes = convertStroke(mergeStrokeFields(compPen, pen), ctx, node)
   if (pen.effect === undefined && compPen.effect) node.effects = convertEffects(compPen.effect)
   if (pen.cornerRadius === undefined) applyCornerRadius(node, compPen.cornerRadius, ctx)
 }
@@ -258,7 +259,7 @@ function createSceneNode(
   const node = graph.createNode(mapNodeType(pen), parentId, overrides)
 
   if (pen.fill !== undefined) node.fills = convertFill(pen.fill, ctx, node)
-  if (pen.stroke) node.strokes = convertStroke(pen.stroke, ctx, node)
+  if (pen.stroke !== undefined) node.strokes = convertStroke(pen, ctx, node)
   node.effects = convertEffects(pen.effect)
   applyCornerRadius(node, pen.cornerRadius, ctx)
   applyPadding(node, pen.padding, ctx)

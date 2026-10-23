@@ -1,6 +1,8 @@
-import { colorToHex, contrastRatio } from '@open-pencil/scene-graph/color'
+import { colorToHex, compositeOver, contrastRatio } from '@open-pencil/scene-graph/color'
+import type { Color } from '@open-pencil/scene-graph/primitives'
 
 import { defineRule } from '#core/lint/rule'
+import type { LintNode, RuleContext } from '#core/lint/types'
 
 /** WCAG AA: 4.5:1 for text, 3:1 for large text, which is 24px, or 18.66px when bold. */
 const MIN_CONTRAST = 4.5
@@ -25,6 +27,39 @@ function requiredContrast(node: {
   return Math.max(...styles.map(minContrast))
 }
 
+type SolidPaint = LintNode['fills'][number] & {
+  color: NonNullable<LintNode['fills'][number]['color']>
+}
+
+function solidPaint(node: LintNode): SolidPaint | undefined {
+  return node.fills.find((f): f is SolidPaint => f.type === 'SOLID' && f.visible && f.color != null)
+}
+
+function opaque(color: Pick<Color, 'r' | 'g' | 'b'>): Color {
+  return { ...color, a: 1 }
+}
+
+/**
+ * What the text sits on: the solid fills of its ancestors, translucent ones composited over the
+ * nearest opaque one. Undefined when no ancestor has an opaque fill, since what shows through
+ * a translucent fill then is not part of the design.
+ */
+function backdrop(node: LintNode, context: RuleContext): Color | undefined {
+  const layers: SolidPaint[] = []
+  for (let parent = context.getParent(node); parent; parent = context.getParent(parent)) {
+    const paint = solidPaint(parent)
+    if (!paint) continue
+    if (paint.opacity >= 1) {
+      return layers.reduceRight(
+        (bg, layer) => compositeOver(opaque(layer.color), bg, layer.opacity),
+        opaque(paint.color)
+      )
+    }
+    layers.push(paint)
+  }
+  return undefined
+}
+
 export default defineRule({
   meta: {
     id: 'color-contrast',
@@ -34,29 +69,24 @@ export default defineRule({
   },
   match: ['TEXT'],
   check(node, context) {
-    const textColor = node.fills.find((f) => f.type === 'SOLID' && f.visible && f.color)?.color
-    if (textColor == null) return
-    let parent = context.getParent(node)
-    while (parent) {
-      const bg = parent.fills.find((f) => f.type === 'SOLID' && f.visible && f.color)?.color
-      if (bg) {
-        const ratio = contrastRatio(textColor, bg)
-        const minRatio = requiredContrast(node)
-        if (ratio < minRatio)
-          context.report({
-            node,
-            message: `Contrast ratio ${ratio.toFixed(2)}:1 is below WCAG AA`,
-            suggest: 'Increase contrast between text and background',
-            data: {
-              ratio: Math.floor(ratio * 100) / 100,
-              minRatio,
-              foreground: colorToHex({ ...textColor, a: 1 }),
-              background: colorToHex({ ...bg, a: 1 })
-            }
-          })
-        return
-      }
-      parent = context.getParent(parent)
-    }
+    const text = solidPaint(node)
+    if (!text) return
+    const bg = backdrop(node, context)
+    if (!bg) return
+    const fg = compositeOver(opaque(text.color), bg, text.opacity)
+    const ratio = contrastRatio(fg, bg)
+    const minRatio = requiredContrast(node)
+    if (ratio < minRatio)
+      context.report({
+        node,
+        message: `Contrast ratio ${ratio.toFixed(2)}:1 is below WCAG AA`,
+        suggest: 'Increase contrast between text and background',
+        data: {
+          ratio: Math.floor(ratio * 100) / 100,
+          minRatio,
+          foreground: colorToHex(fg),
+          background: colorToHex(bg)
+        }
+      })
   }
 })

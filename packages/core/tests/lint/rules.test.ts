@@ -138,6 +138,52 @@ describe('color-contrast', () => {
   })
 })
 
+describe('color-contrast over translucent fills', () => {
+  const DARK = { r: 0.1, g: 0.1, b: 0.1, a: 1 }
+  const tint = (opacity: number): SceneNode['fills'] => [
+    { type: 'SOLID', visible: true, opacity, color: WHITE }
+  ]
+
+  function textOn(layers: SceneNode['fills'][], text: SceneNode['fills']) {
+    const graph = new SceneGraph()
+    let parentId = graph.getPages()[0].id
+    for (const fills of layers) parentId = graph.createNode('FRAME', parentId, { fills }).id
+    const label = graph.createNode('TEXT', parentId, { name: 'Label', text: 'Hi', fills: text })
+    return { graph, label }
+  }
+
+  test('composites a translucent card over the opaque fill below it', () => {
+    // A 10% white tint over a dark page stays dark: white text on it reads well.
+    const { graph } = textOn([solid(DARK), tint(0.1)], solid(WHITE))
+
+    expect(lint(graph, 'color-contrast')).toEqual([])
+  })
+
+  test('reports against the composited background', () => {
+    // A 90% white tint over a dark page is nearly white: white text on it does not read.
+    const { graph, label } = textOn([solid(DARK), tint(0.9)], solid(WHITE))
+    const messages = lint(graph, 'color-contrast')
+
+    expect(messages.map((message) => message.nodeId)).toEqual([label.id])
+    expect(messages[0]?.data?.background).not.toBe('#FFFFFF')
+  })
+
+  test('composites translucent text over its background', () => {
+    const faint: SceneNode['fills'] = [
+      { type: 'SOLID', visible: true, opacity: 0.2, color: { r: 0, g: 0, b: 0, a: 1 } }
+    ]
+    const { graph, label } = textOn([solid(WHITE)], faint)
+
+    expect(lint(graph, 'color-contrast').map((message) => message.nodeId)).toEqual([label.id])
+  })
+
+  test('skips text whose only backdrop is translucent', () => {
+    const { graph } = textOn([tint(0.1)], solid(WHITE))
+
+    expect(lint(graph, 'color-contrast')).toEqual([])
+  })
+})
+
 describe('no-deeply-nested', () => {
   test('reports only the layer that crosses the depth limit', () => {
     const graph = new SceneGraph()

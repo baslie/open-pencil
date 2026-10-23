@@ -121,6 +121,25 @@ describe('parsePenFile — Pen layout defaults (#564)', () => {
     })
   })
 
+  test('spreads children with justifyContent space_between', () => {
+    const graph = parseLayoutDocument([
+      {
+        id: 'row',
+        type: 'frame',
+        width: 400,
+        height: 40,
+        justifyContent: 'space_between',
+        children: [
+          { id: 'first', type: 'frame', width: 40, height: 40 },
+          { id: 'last', type: 'frame', width: 40, height: 40 }
+        ]
+      }
+    ])
+
+    expect(graph.getNode('row')?.primaryAxisAlign).toBe('SPACE_BETWEEN')
+    expect(graph.getNode('last')?.x).toBe(360)
+  })
+
   test('keeps explicit freeform frames out of auto-layout', () => {
     const graph = parseLayoutDocument([
       {

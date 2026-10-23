@@ -460,8 +460,9 @@ export function mapLayoutMode(pen: PenNode): LayoutMode {
   return pen.type === 'frame' && pen.layout === undefined ? 'HORIZONTAL' : 'NONE'
 }
 
+/** `.pen` spells the keyword with an underscore (`space_between`), CSS with a hyphen. */
 export function mapJustifyContent(value: string | undefined): LayoutAlign {
-  return parsePrimaryAxisAlign(value) ?? 'MIN'
+  return parsePrimaryAxisAlign(value?.replaceAll('_', '-')) ?? 'MIN'
 }
 
 export function mapAlignItems(value: string | undefined): LayoutCounterAlign {

@@ -200,7 +200,18 @@ describe('color-contrast over translucent fills', () => {
     const messages = lint(graph, 'color-contrast')
 
     expect(messages.map((message) => message.nodeId)).toEqual([label.id])
-    expect(messages[0]?.data?.background).not.toBe('#FFFFFF')
+    expect(messages[0]?.data?.background).toBe('#E8E8E8')
+  })
+
+  test('composites every text fill in paint order', () => {
+    // A hidden black fill under a visible light gray one: the gray is what reads on white.
+    const text: SceneNode['fills'] = [
+      { type: 'SOLID', visible: true, opacity: 0, color: { r: 0, g: 0, b: 0, a: 1 } },
+      ...solid({ r: 0.85, g: 0.85, b: 0.85, a: 1 })
+    ]
+    const { graph, label } = textOn([solid(WHITE)], text)
+
+    expect(lint(graph, 'color-contrast').map((message) => message.nodeId)).toEqual([label.id])
   })
 
   test('skips fully transparent text', () => {

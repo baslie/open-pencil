@@ -35,10 +35,6 @@ function isSolidPaint(fill: LintNode['fills'][number]): fill is SolidPaint {
   return fill.type === 'SOLID' && fill.visible && fill.color != null
 }
 
-function solidPaint(node: LintNode): SolidPaint | undefined {
-  return node.fills.find(isSolidPaint)
-}
-
 /** Visible solid fills, topmost first: fills paint in array order, so the last one is on top. */
 function solidPaintsTopDown(node: LintNode): SolidPaint[] {
   return node.fills.filter(isSolidPaint).reverse()
@@ -79,11 +75,14 @@ export default defineRule({
   },
   match: ['TEXT'],
   check(node, context) {
-    const text = solidPaint(node)
-    if (!text || text.opacity <= 0) return
+    const text = node.fills.filter(isSolidPaint)
+    if (!text.some((paint) => paint.opacity > 0)) return
     const bg = backdrop(node, context)
     if (!bg) return
-    const fg = compositeOver(opaque(text.color), bg, text.opacity)
+    const fg = text.reduce(
+      (color, paint) => compositeOver(opaque(paint.color), color, paint.opacity),
+      bg
+    )
     const ratio = contrastRatio(fg, bg)
     const minRatio = requiredContrast(node)
     if (ratio < minRatio)

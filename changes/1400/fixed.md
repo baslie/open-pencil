@@ -1,1 +1,1 @@
-- The color contrast lint rule measures text against translucent fills composited over the background below them, and skips text with no opaque background.
+- The color contrast lint rule measures text against translucent fills composited over the background below them, including fills stacked on the same layer, and skips text with no opaque background or fully transparent text.

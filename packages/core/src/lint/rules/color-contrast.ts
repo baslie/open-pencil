@@ -31,8 +31,17 @@ type SolidPaint = LintNode['fills'][number] & {
   color: NonNullable<LintNode['fills'][number]['color']>
 }
 
+function isSolidPaint(fill: LintNode['fills'][number]): fill is SolidPaint {
+  return fill.type === 'SOLID' && fill.visible && fill.color != null
+}
+
 function solidPaint(node: LintNode): SolidPaint | undefined {
-  return node.fills.find((f): f is SolidPaint => f.type === 'SOLID' && f.visible && f.color != null)
+  return node.fills.find(isSolidPaint)
+}
+
+/** Visible solid fills, topmost first: fills paint in array order, so the last one is on top. */
+function solidPaintsTopDown(node: LintNode): SolidPaint[] {
+  return node.fills.filter(isSolidPaint).reverse()
 }
 
 function opaque(color: Pick<Color, 'r' | 'g' | 'b'>): Color {
@@ -40,22 +49,23 @@ function opaque(color: Pick<Color, 'r' | 'g' | 'b'>): Color {
 }
 
 /**
- * What the text sits on: the solid fills of its ancestors, translucent ones composited over the
- * nearest opaque one. Undefined when no ancestor has an opaque fill, since what shows through
- * a translucent fill then is not part of the design.
+ * What the text sits on: the solid fills of its ancestors in paint order, translucent ones
+ * composited over the nearest opaque one, which may sit under them on the same ancestor.
+ * Undefined when no ancestor has an opaque fill, since what shows through a translucent fill
+ * then is not part of the design.
  */
 function backdrop(node: LintNode, context: RuleContext): Color | undefined {
   const layers: SolidPaint[] = []
   for (let parent = context.getParent(node); parent; parent = context.getParent(parent)) {
-    const paint = solidPaint(parent)
-    if (!paint) continue
-    if (paint.opacity >= 1) {
-      return layers.reduceRight(
-        (bg, layer) => compositeOver(opaque(layer.color), bg, layer.opacity),
-        opaque(paint.color)
-      )
+    for (const paint of solidPaintsTopDown(parent)) {
+      if (paint.opacity >= 1) {
+        return layers.reduceRight(
+          (bg, layer) => compositeOver(opaque(layer.color), bg, layer.opacity),
+          opaque(paint.color)
+        )
+      }
+      layers.push(paint)
     }
-    layers.push(paint)
   }
   return undefined
 }
@@ -70,7 +80,7 @@ export default defineRule({
   match: ['TEXT'],
   check(node, context) {
     const text = solidPaint(node)
-    if (!text) return
+    if (!text || text.opacity <= 0) return
     const bg = backdrop(node, context)
     if (!bg) return
     const fg = compositeOver(opaque(text.color), bg, text.opacity)

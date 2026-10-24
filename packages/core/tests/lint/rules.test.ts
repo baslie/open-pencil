@@ -96,7 +96,13 @@ describe('color-contrast', () => {
     // 3.2:1 against white.
     const grey = { r: 0.55, g: 0.55, b: 0.55, a: 1 }
     const text = (name: string, fontSize: number, fontWeight: number) =>
-      graph.createNode('TEXT', card.id, { name, text: name, fontSize, fontWeight, fills: solid(grey) })
+      graph.createNode('TEXT', card.id, {
+        name,
+        text: name,
+        fontSize,
+        fontWeight,
+        fills: solid(grey)
+      })
     const body = text('Body', 16, 400)
     const boldBody = text('Bold body', 18, 700)
     text('Display', 24, 400)
@@ -179,6 +185,27 @@ describe('color-contrast over translucent fills', () => {
 
   test('skips text whose only backdrop is translucent', () => {
     const { graph } = textOn([tint(0.1)], solid(WHITE))
+
+    expect(lint(graph, 'color-contrast')).toEqual([])
+  })
+
+  test('composites a translucent fill over an opaque fill on the same frame', () => {
+    // The frame paints white, then a 10% dark tint over it: dark gray text on it does not read.
+    const frame: SceneNode['fills'] = [
+      ...solid(WHITE),
+      { type: 'SOLID', visible: true, opacity: 0.1, color: DARK }
+    ]
+    const gray = solid({ r: 0.75, g: 0.75, b: 0.75, a: 1 })
+    const { graph, label } = textOn([solid(DARK), frame], gray)
+    const messages = lint(graph, 'color-contrast')
+
+    expect(messages.map((message) => message.nodeId)).toEqual([label.id])
+    expect(messages[0]?.data?.background).not.toBe('#FFFFFF')
+  })
+
+  test('skips fully transparent text', () => {
+    const hidden: SceneNode['fills'] = [{ type: 'SOLID', visible: true, opacity: 0, color: WHITE }]
+    const { graph } = textOn([solid(WHITE)], hidden)
 
     expect(lint(graph, 'color-contrast')).toEqual([])
   })

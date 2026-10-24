@@ -75,10 +75,13 @@ export default defineRule({
   },
   match: ['TEXT'],
   check(node, context) {
-    // Gradients and images are not composited yet, so a stack holding one has no single color.
-    if (node.fills.some((paint) => paint.visible && paint.type !== 'SOLID' && paint.opacity > 0))
+    // Paints under the topmost opaque solid fill are covered by it.
+    const base = node.fills.findLastIndex((paint) => isSolidPaint(paint) && paint.opacity >= 1)
+    const visible = node.fills.slice(Math.max(base, 0))
+    // Gradients and images are not composited yet, so a stack showing one has no single color.
+    if (visible.some((paint) => paint.visible && paint.type !== 'SOLID' && paint.opacity > 0))
       return
-    const text = node.fills.filter(isSolidPaint)
+    const text = visible.filter(isSolidPaint)
     if (!text.some((paint) => paint.opacity > 0)) return
     const bg = backdrop(node, context)
     if (!bg) return

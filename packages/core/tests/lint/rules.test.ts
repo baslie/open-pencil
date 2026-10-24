@@ -226,6 +226,16 @@ describe('color-contrast over translucent fills', () => {
     expect(lint(graph, 'color-contrast')).toEqual([])
   })
 
+  test('measures text whose gradient is covered by an opaque fill', () => {
+    const text: SceneNode['fills'] = [
+      { type: 'GRADIENT_LINEAR', visible: true, opacity: 1, color: WHITE },
+      ...solid(WHITE)
+    ]
+    const { graph, label } = textOn([solid(WHITE)], text)
+
+    expect(lint(graph, 'color-contrast').map((message) => message.nodeId)).toEqual([label.id])
+  })
+
   test('skips fully transparent text', () => {
     const hidden: SceneNode['fills'] = [{ type: 'SOLID', visible: true, opacity: 0, color: WHITE }]
     const { graph } = textOn([solid(WHITE)], hidden)

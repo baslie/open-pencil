@@ -75,6 +75,9 @@ export default defineRule({
   },
   match: ['TEXT'],
   check(node, context) {
+    // Gradients and images are not composited yet, so a stack holding one has no single color.
+    if (node.fills.some((paint) => paint.visible && paint.type !== 'SOLID' && paint.opacity > 0))
+      return
     const text = node.fills.filter(isSolidPaint)
     if (!text.some((paint) => paint.opacity > 0)) return
     const bg = backdrop(node, context)

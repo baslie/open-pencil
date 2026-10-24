@@ -204,14 +204,26 @@ describe('color-contrast over translucent fills', () => {
   })
 
   test('composites every text fill in paint order', () => {
-    // A hidden black fill under a visible light gray one: the gray is what reads on white.
+    // Half-white over black paints mid gray; the other way round, black would cover the white.
     const text: SceneNode['fills'] = [
-      { type: 'SOLID', visible: true, opacity: 0, color: { r: 0, g: 0, b: 0, a: 1 } },
-      ...solid({ r: 0.85, g: 0.85, b: 0.85, a: 1 })
+      ...solid({ r: 0, g: 0, b: 0, a: 1 }),
+      { type: 'SOLID', visible: true, opacity: 0.5, color: WHITE }
     ]
-    const { graph, label } = textOn([solid(WHITE)], text)
+    const { graph, label } = textOn([solid(DARK)], text)
+    const messages = lint(graph, 'color-contrast')
 
-    expect(lint(graph, 'color-contrast').map((message) => message.nodeId)).toEqual([label.id])
+    expect(messages.map((message) => message.nodeId)).toEqual([label.id])
+    expect(messages[0]?.data?.foreground).toBe('#808080')
+  })
+
+  test('skips text with a gradient in its fills', () => {
+    const text: SceneNode['fills'] = [
+      { type: 'GRADIENT_LINEAR', visible: true, opacity: 1, color: WHITE },
+      { type: 'SOLID', visible: true, opacity: 0.5, color: WHITE }
+    ]
+    const { graph } = textOn([solid(WHITE)], text)
+
+    expect(lint(graph, 'color-contrast')).toEqual([])
   })
 
   test('skips fully transparent text', () => {
